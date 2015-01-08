@@ -70,6 +70,32 @@ class HTTPHeader():
     def __str__(self):
         return self.get_string()
 
+class HTTPMessage():
+    '''
+    Packages an HTTP header and the optional HTTP message body data.
+
+    fp: The filepath of the file to be included in the HTTP response.
+    '''
+
+    fp = ''
+
+    def __init__(self, fp):
+        self.fp = fp
+
+    def build_header(self, protocol, status):
+        return
+
+    def build_message(self):
+        return
+
+    def build_package(self):
+        '''Combines the header and message for an outgoing HTTP response'''
+        return
+
+    def get_size(self, path):
+        '''Takes the filepath and return the size (in bytes) of the file'''
+        return
+
 
 class RequestHandler(SocketServer.BaseRequestHandler):
     '''
