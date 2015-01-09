@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import time
+from collections import OrderedDict
 
 # Copyright 2015 Michael Raypold
 #
@@ -29,38 +30,40 @@ class HTTPHeader():
 
     Protocol: The HTTP protocol (eg: HTTP/1.1).
     Status: A valid HTTP status code (No checking is performed. eg: 200 OK).
-    Length: The length of the message body in bytes that will follow.
     Type: Content type of the message (eg: text/html).
+
+    See http://en.wikipedia.org/wiki/HTTP_message_body
     '''
 
-    header = {
-        'request_status':'',
-        'date':'Date: ',
-        'server':'Server: ',
-        'content_length':'Content-Length: ',
-        'content_type':'Content-Type: ',
-        'blank':'\n'}
+    header = OrderedDict((
+        ('request_status',''),
+        ('date','Date: '),
+        ('server','Server: CMPUT 404 Webserver\n'),
+        ('content_type','Content-Type: '),
+        ('blank','\n')))
 
-    def __init__(self, protocol, status, length, type):
+    def __init__(self, protocol, status, ctype):
+        self.set_status(protocol, status)
+        self.set_content_type(ctype)
+        self.set_date()
+
+    def set_status(self, protocol, status):
         self.header['request_status'] = protocol + ' ' + status + '\n'
 
-        # May have not been provided length in str format
-        self.header['content_length'] += str(length) + '\n'
+    def set_content_type(self, ctype):
+        self.header['content_type'] += ctype + '\n'
 
-        self.header['content_type'] += type + '\n'
-        self._date()
-        self._server()
-
-    def _date(self):
+    def set_date(self):
         self.header['date'] += time.strftime('%a, %d %b %Y %H:%M:%S %z') + '\n'
 
-    def _server(self):
-        self.header['server'] += 'CMPUT 404 Webserver\n'
-
     def get_string(self):
-        return self.header['request_status'] + self.header['date'] + \
-            self.header['server'] + self.header['content_length'] + \
-            self.header['content_type'] + self.header['blank']
+        return ''.join(self._get_values())
+
+    def _get_keys(self):
+        return self.header.keys()
+
+    def _get_values(self):
+        return self.header.values()
 
     def __str__(self):
         return self.get_string()
