@@ -35,6 +35,41 @@ import os
 
 # try: curl -v -X GET http://127.0.0.1:8080/
 
+# To implement still
+# - check for file permissions before attempting to access...
+# - should SocketServer.TCPServer.allow_reuse_address = True be self.TCPServer.allow_reuse_address = True ?
+
+class ServerDirectory():
+    '''
+    An in memory key/value store of the location of html files and their
+    associated style sheets.
+
+    Essentially a pseudo NoSQL database using a python dictionary.
+
+    self.db takes the key/value form of:
+    {"index.html":("main.css,sub.css")}
+    '''
+    db = {}
+
+    def __init__(self):
+        self.basedir = os.path.join(os.getcwd(), 'www/')
+
+    def _build_db(self):
+        '''
+        Seeks all HTML files in subdirectories and then inspects each file
+        to find associated style sheets. Finally all html files and style sheets
+        are added to self.db
+        '''
+        self.db = {}
+
+        return True
+
+    def _inspec_html(self, fp):
+        return True
+
+    def rebuild_db(self):
+        self._build_db()
+
 class PyServer(SocketServer.TCPServer):
     '''
     Implements a simple server for HTTP/1.1 GET requests.
@@ -58,7 +93,7 @@ class PyServer(SocketServer.TCPServer):
         Builds a tree of the directories and files to be served by the
         server.
         '''
-        return True
+        return ServerDirectory()
 
 class RequestHandler(SocketServer.BaseRequestHandler):
     '''
