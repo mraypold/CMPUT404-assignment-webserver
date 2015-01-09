@@ -25,6 +25,12 @@ import os
 #
 # http://docs.python.org/2/library/socketserver.html
 #
+# StackOverflow Resources
+# For overriding SocketServer.TCPServer._init__()
+# http://stackoverflow.com/questions/6875599/with-python-socketserver-how-can-i-pass-a-variable-to-the-constructor-of-the-han
+# http://stackoverflow.com/questions/3911009/python-socketserver-baserequesthandler-knowing-the-port-and-use-the-port-already
+# http://stackoverflow.com/questions/15889241/send-a-variable-to-a-tcphandler-in-python
+#
 # run: python freetests.py
 
 # try: curl -v -X GET http://127.0.0.1:8080/
@@ -32,16 +38,27 @@ import os
 class PyServer(SocketServer.TCPServer):
     '''
     Implements a simple server for HTTP/1.1 GET requests.
+
+    Directory tree is built upon server initialization. As such,
+    if files are removed or modified during server uptime, unspecified
+    behaviour will result.
     '''
 
     def __init__(self, Host, Port):
         SocketServer.TCPServer.allow_reuse_address = True
         # Create the server, binding to localhost on port 8080
-        server = SocketServer.TCPServer((HOST, PORT), RequestHandler)
+        SocketServer.TCPServer.__init__(self, (HOST, PORT),RequestHandler)
 
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
-        server.serve_forever()
+        self.serve_forever()
+
+    def _build_dtree(self):
+        '''
+        Builds a tree of the directories and files to be served by the
+        server.
+        '''
+        return True
 
 class RequestHandler(SocketServer.BaseRequestHandler):
     '''
@@ -72,10 +89,12 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         return request.split()[1]
 
     def _is_get(self, request):
-        return request.strip()[0:3] == 'GET'
+        # return request.strip()[0:3] == 'GET'
+        return request.strip().split()[0] == 'GET'
 
     def _is_HTTP(self, request):
-        return request.strip()[-8:] == 'HTTP/1.1'
+        # return request.strip()[-8:] == 'HTTP/1.1'
+        return request.strip().split()[-1] == 'HTTP/1.1'
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080

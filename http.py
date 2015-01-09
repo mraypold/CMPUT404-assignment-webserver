@@ -73,23 +73,23 @@ class HTTPMessage():
     Packages an HTTP header and the optional HTTP message body data.
 
     fp: The filepath of the file to be included in the HTTP response.
+    Protocol: The HTTP protocol (eg: HTTP/1.1).
+    Status: A valid HTTP status code (No checking is performed. eg: 200 OK).
+
+    The given filepath is assumed to be valid and should be checked prior to
+    calling HTTPMessage().
     '''
 
-    fp = ''
-
-    def __init__(self, fp):
+    def __init__(self, fp, protocol, status):
         self.fp = fp
+        self.header = HTTPHeader(protocol, status, 'text/html')
 
-    def build_header(self, protocol, status):
-        return
+    # def build_header(self, protocol, status):
+    #     self.header = HTTPHeader(protocol, status, 'text/html')
 
     def build_message(self):
         return
 
     def build_package(self):
         '''Combines the header and message for an outgoing HTTP response'''
-        return
-
-    def get_size(self, path):
-        '''Takes the filepath and return the size (in bytes) of the file'''
         return
