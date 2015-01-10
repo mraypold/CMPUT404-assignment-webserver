@@ -26,10 +26,14 @@ import os
 # http://docs.python.org/2/library/socketserver.html
 #
 # StackOverflow Resources
+#
 # For overriding SocketServer.TCPServer._init__()
 # http://stackoverflow.com/questions/6875599/with-python-socketserver-how-can-i-pass-a-variable-to-the-constructor-of-the-han
 # http://stackoverflow.com/questions/3911009/python-socketserver-baserequesthandler-knowing-the-port-and-use-the-port-already
 # http://stackoverflow.com/questions/15889241/send-a-variable-to-a-tcphandler-in-python
+#
+# For searching subdirectories in ServerDirectory() _get_files()
+# http://stackoverflow.com/questions/1192978/python-get-relative-path-of-all-files-and-subfolders-in-a-directory
 #
 # run: python freetests.py
 
@@ -38,37 +42,66 @@ import os
 # To implement still
 # - check for file permissions before attempting to access...
 # - should SocketServer.TCPServer.allow_reuse_address = True be self.TCPServer.allow_reuse_address = True ?
+# - update ServerDirectory whenever files are added. Or through infinite loop.
+# - Add \r\n to HTTP response
 
 class ServerDirectory():
     '''
-    An in memory key/value store of the location of html files and their
-    associated style sheets.
+    An in memory key/value store of the location of html files and their size
+    in bytes.
 
-    Essentially a pseudo NoSQL database using a python dictionary.
+    The idea is to prevent unnecessay disk IO when looking for files
 
-    self.db takes the key/value form of:
-    {"index.html":("main.css,sub.css")}
+    root: The base directory of the web server
     '''
-    db = {}
+    directory = {}
+    dfsize = -1 # Default file size -1 bytes
 
-    def __init__(self):
-        self.basedir = os.path.join(os.getcwd(), 'www/')
+    def __init__(self, root=os.path.join(os.getcwd(), 'www')):
+        self.root = root
+        self._build_directory()
 
-    def _build_db(self):
+    def _build_directory(self):
         '''
-        Seeks all HTML files in subdirectories and then inspects each file
-        to find associated style sheets. Finally all html files and style sheets
-        are added to self.db
+        Seeks all filepaths (keys) in root and determines their size (values)
+        in bytes for entry in the self.directory dictionary.
         '''
-        self.db = {}
+        self.directory = dict.fromkeys(self._get_fileset(), self.dfsize)
+        self._set_all_fsize()
 
         return True
 
-    def _inspec_html(self, fp):
-        return True
+    def rebuild_directory(self):
+        self._build_directory()
 
-    def rebuild_db(self):
-        self._build_db()
+    def _get_fileset(self):
+        '''Returns a set of all filepaths in ./www subdirectories'''
+        fileset = set()
+
+        for directory, folder, files in os.walk(self.root):
+            for filename in files:
+                rd = os.path.relpath(directory, os.getcwd())
+                rf = os.path.join(rd, filename)
+                fileset.add(rf)
+
+        return fileset
+
+    def _set_all_fsize(self):
+        for key in self.directory:
+            self._set_fsize(key)
+
+    def _set_fsize(self, fp):
+        self.directory[fp] = os.path.getsize(fp)
+
+    def get_fsize(self, fp):
+        return self.directory.get(fp, self.dfsize)
+
+    def get_filepaths(self):
+        return self.directory.keys()
+
+    def get_num_files(self):
+        return len(self.directory)
+
 
 class PyServer(SocketServer.TCPServer):
     '''
