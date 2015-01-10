@@ -3,6 +3,7 @@
 import SocketServer
 import http
 import os
+import time
 
 # Copyright 2013-2015 Abram Hindle, Eddie Antonio Santos, Michael Raypold
 #
@@ -44,20 +45,19 @@ import os
 # - should SocketServer.TCPServer.allow_reuse_address = True be self.TCPServer.allow_reuse_address = True ?
 # - update ServerDirectory whenever files are added. Or through infinite loop.
 # - Add \r\n to HTTP response
+# - Change serverdirectory to seperate thread so that it can be modified when files update or overwrite serverforever()
 
 class ServerDirectory():
     '''
-    An in memory key/value store of the location of html files and their size
-    in bytes.
-
-    The idea is to prevent unnecessay disk IO when looking for files
+    An in memory key/value store of the location of files and their size
+    in bytes to prevent unnecessary disk IO when looking for files.
 
     root: The base directory of the web server
     '''
     directory = {}
     dfsize = -1 # Default file size -1 bytes
 
-    def __init__(self, root=os.path.join(os.getcwd(), 'www')):
+    def __init__(self, root=os.getcwd()):
         self.root = root
         self._build_directory()
 
@@ -69,13 +69,11 @@ class ServerDirectory():
         self.directory = dict.fromkeys(self._get_fileset(), self.dfsize)
         self._set_all_fsize()
 
-        return True
-
     def rebuild_directory(self):
         self._build_directory()
 
     def _get_fileset(self):
-        '''Returns a set of all filepaths in ./www subdirectories'''
+        '''Returns a set of all filepaths in subdirectories'''
         fileset = set()
 
         for directory, folder, files in os.walk(self.root):
@@ -102,14 +100,19 @@ class ServerDirectory():
     def get_num_files(self):
         return len(self.directory)
 
+    def _create_table(self):
+        '''Create a table for printing'''
+        result = 'Location - (Filesize)\n'
+        for k,v in self.directory.items():
+            result += str(k) + ' - (' + str(v) + ')\n'
+        return result.rstrip()
+
+    def __str__(self):
+        return self._create_table()
 
 class PyServer(SocketServer.TCPServer):
     '''
     Implements a simple server for HTTP/1.1 GET requests.
-
-    Directory tree is built upon server initialization. As such,
-    if files are removed or modified during server uptime, unspecified
-    behaviour will result.
     '''
 
     def __init__(self, Host, Port):
@@ -117,16 +120,24 @@ class PyServer(SocketServer.TCPServer):
         # Create the server, binding to localhost on port 8080
         SocketServer.TCPServer.__init__(self, (HOST, PORT),RequestHandler)
 
+        self.root = os.path.join(os.getcwd(), 'www')
+        self.directory = ServerDirectory(self.root)
+        self.print_server_stats()
+
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
         self.serve_forever()
 
-    def _build_dtree(self):
-        '''
-        Builds a tree of the directories and files to be served by the
-        server.
-        '''
-        return ServerDirectory()
+    def print_server_stats(self):
+        print("-------------------------------------")
+        print("CMPUT 410 Webserver")
+        print("Current time: %s" % time.strftime('%a, %d %b %Y %H:%M:%S'))
+        print("Root directory: %s" % self.root)
+        print("-------------------------------------")
+        print("Hosting %d file(s)" % self.directory.get_num_files())
+        print(self.directory)
+        print("-------------------------------------")
+
 
 class RequestHandler(SocketServer.BaseRequestHandler):
     '''
