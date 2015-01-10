@@ -80,9 +80,9 @@ class HTTPMessage():
     calling HTTPMessage().
     '''
 
-    def __init__(self, fp, protocol, status):
+    def __init__(self, fp, protocol, status, ctype):
         self.fp = fp
-        self.header = HTTPHeader(protocol, status, 'text/html')
+        self.header = HTTPHeader(protocol, status, ctype)
 
     # def build_header(self, protocol, status):
     #     self.header = HTTPHeader(protocol, status, 'text/html')

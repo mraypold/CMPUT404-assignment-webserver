@@ -99,6 +99,17 @@ class ServerDirectory():
     def get_num_files(self):
         return len(self.directory)
 
+    def exists(self, fp):
+        return fp in self.directory
+
+    def get_ctype(self, fp):
+        if(fp.endswith('.html')):
+            return 'text/html'
+        elif(fp.endswith('.css')):
+            return 'text/css'
+        else:
+            return 'text/plain'
+
     def _create_table(self):
         '''Create a table for printing'''
         result = 'Location - (Filesize)\n'
