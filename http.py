@@ -38,9 +38,9 @@ class HTTPHeader():
     header = OrderedDict((
         ('request_status',''),
         ('date','Date: '),
-        ('server','Server: CMPUT 404 Webserver\n'),
+        ('server','Server: CMPUT 404 Webserver\r\n'),
         ('content_type','Content-Type: '),
-        ('blank','\n')))
+        ('blank','\r\n')))
 
     def __init__(self, protocol, status, ctype):
         self.set_status(protocol, status)
@@ -48,13 +48,13 @@ class HTTPHeader():
         self.set_date()
 
     def set_status(self, protocol, status):
-        self.header['request_status'] = protocol + ' ' + status + '\n'
+        self.header['request_status'] = protocol + ' ' + status + '\r\n'
 
     def set_content_type(self, ctype):
-        self.header['content_type'] += ctype + '\n'
+        self.header['content_type'] += ctype + '\r\n'
 
     def set_date(self):
-        self.header['date'] += time.strftime('%a, %d %b %Y %H:%M:%S %z') + '\n'
+        self.header['date'] += time.strftime('%a, %d %b %Y %H:%M:%S %z') + '\r\n'
 
     def get_string(self):
         return ''.join(self._get_values())

@@ -44,7 +44,6 @@ import time
 # - check for file permissions before attempting to access...
 # - should SocketServer.TCPServer.allow_reuse_address = True be self.TCPServer.allow_reuse_address = True ?
 # - update ServerDirectory whenever files are added. Or through infinite loop.
-# - Add \r\n to HTTP response
 # - Change serverdirectory to seperate thread so that it can be modified when files update or overwrite serverforever()
 
 class ServerDirectory():
@@ -168,11 +167,9 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         return request.split()[1]
 
     def _is_get(self, request):
-        # return request.strip()[0:3] == 'GET'
         return request.strip().split()[0] == 'GET'
 
     def _is_HTTP(self, request):
-        # return request.strip()[-8:] == 'HTTP/1.1'
         return request.strip().split()[-1] == 'HTTP/1.1'
 
 if __name__ == "__main__":
