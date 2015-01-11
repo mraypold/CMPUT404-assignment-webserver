@@ -41,39 +41,30 @@ class TestDirectory(unittest.TestCase):
 
         self.d = server.ServerDirectory(self.testroot)
 
-
     def test_directory_created(self):
-        '''setUpClass should create subdirectory'''
         self.assertTrue(os.path.exists(self.testroot), "Subdirectory does not exist!")
 
     def test_file_created(self):
-        '''setUpClass should create a temporary file for use'''
         self.assertTrue(os.path.isfile(self.filename), "File does not exist!")
 
     def test_file_in_directory(self):
-        '''Directory must state that a file exists'''
         self.assertTrue(self.d.exists('testdir/hello.html'), "Directory should return that the file exists")
 
     def test_file_not_directory(self):
-        '''Directory must state that a file does not exist'''
         self.assertFalse(self.d.exists('testdir/notexist.html'), "Directory should return that file does not exist")
 
     def test_number_files(self):
-        '''There should be exactly 2 files detected by ServerDirectory'''
         self.assertTrue(self.d.get_num_files() == 2, "ServerDirectory miscounted the number of files")
 
     def test_get_filepaths(self):
-        '''The filepaths should be of the form self.testroot/.'''
         paths = self.d.get_filepaths()
         for path in paths:
             self.assertTrue(path[0:7] == self.testroot[-7:], "The filepaths do not start with the correct root directory")
 
     def test_get_fsize(self):
-        '''ServerDirectory should return correct fsize(bytes) for specified path'''
         self.assertTrue(self.d.get_fsize('testdir/hello.html') == 13, "Did not get the correct file size")
 
     def test_content_type(self):
-        '''If an html file type, text/html should be the returned content type'''
         self.assertTrue(self.d.get_ctype('testdir/hello.html') == 'text/html', "Content type does not match file extension")
 
     @classmethod

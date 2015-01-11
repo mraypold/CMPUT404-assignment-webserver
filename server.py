@@ -45,6 +45,8 @@ import time
 # - should SocketServer.TCPServer.allow_reuse_address = True be self.TCPServer.allow_reuse_address = True ?
 # - update ServerDirectory whenever files are added. Or through infinite loop.
 # - Change serverdirectory to seperate thread so that it can be modified when files update or overwrite serverforever()
+# - If can't split into three, the request was malformed. Not 'GET / HTTP/1.1' - do error checking
+
 
 class ServerDirectory():
     '''
@@ -156,32 +158,57 @@ class RequestHandler(SocketServer.BaseRequestHandler):
     Overrides SocketServer.TCPServer handle() method.
     '''
 
+    # References the server directory initiated in PyServer.
     def handle(self):
-        self.data = self._extract_request(self.request.recv(1024).strip())
-        # self.data = self._extract_request(self.data)
+        self.head = self._extract_head(self.request.recv(1024).strip())
 
-        print ("Got a request of: %s\n" % self.data)
-        self.request.sendall(self.data)
+        # If can't split into three, the request was malformed. Not 'GET / HTTP/1.1'
+        rtype, path, protocol = self._split_request(self.head)
 
-    def _extract_request(self, data):
+        self.request.sendall(self._build_path(path))
+
+        # print ("Got a request of: %s\n" % self.data)
+        # self.request.sendall(self.data)
+
+    def _extract_head(self, request):
         '''Extract first line from received request'''
-        return data.splitlines()[0]
+        return request.splitlines()[0]
 
-    def _is_path(self, path):
-        '''Confirm filepath is legitimate'''
-        fp = os.path.join(os.getcwd(), 'www/', path)
-        return os.path.isfile(fp)
+    # Potential problem if this is longer than 3 variables....investigate
+    def _split_request(self, request):
+        '''Returns the type (eg GET), file requested and http protocol'''
+        return request.split()
 
-    # _get_path(), _is_get(), _is_HTTP() assumes standard form
-    # eg: GET /index.html HTTP/1.1
-    def _get_path(self, request):
-        return request.split()[1]
+    def _is_get(self, request_type):
+        return request_type.strip() == 'GET'
 
-    def _is_get(self, request):
-        return request.strip().split()[0] == 'GET'
+    def _is_HTTP(self, protocol):
+        return protocol.strip() == 'HTTP/1.1'
 
-    def _is_HTTP(self, request):
-        return request.strip().split()[-1] == 'HTTP/1.1'
+    def _append_index(self, path):
+        return os.path.join(path, 'index.html')
+
+    def _trim_relative_root(self, path):
+        '''Trim relative root to allow os.join() and directory lookup'''
+        try:
+            return path[1:] if path[0] == '/' else path
+        except IndexError:
+            return ''
+
+    def _has_extension(self, path):
+        return path.endswith('.html') or path.endswith('.css')
+
+    def _build_path(self, path):
+        if(path.endswith('/')): # current path is directory
+            path = self._append_index(path)
+
+        path = self._trim_relative_root(path)
+        return self._set_relpath(path)
+
+    def _set_relpath(self, path):
+        rd = os.path.relpath(self.server.root, os.getcwd())
+        rf = os.path.join(rd, path)
+        return rf
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
