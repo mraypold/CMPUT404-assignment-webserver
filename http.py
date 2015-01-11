@@ -80,12 +80,25 @@ class HTTPMessage():
     calling HTTPMessage().
     '''
 
+    mbody = ''
+
     def __init__(self, fp, protocol, status, ctype):
         self.fp = fp
         self.header = HTTPHeader(protocol, status, ctype)
 
-    # def build_header(self, protocol, status):
-    #     self.header = HTTPHeader(protocol, status, 'text/html')
+    def _extract_mbody(self, fp):
+        '''Extract file contents into the HTTPMessage'''
+        try:
+            with open(fp, 'r') as fbody:
+                self.mbody = fbody.read()
+        except IOError: # File not accessile. 4xx Error
+            self.mdbody = '400'
+
+    def get_header(self):
+        return self.header
+
+    def get_message_body(self):
+        return self.message
 
     def build_message(self):
         return
@@ -93,3 +106,108 @@ class HTTPMessage():
     def build_package(self):
         '''Combines the header and message for an outgoing HTTP response'''
         return
+
+class HTMLPage():
+    '''Extremely simple HTML page builder'''
+
+    contents = {
+        'doctype':'<!DOCTYPE html>',
+        'title':'',
+        'body':''}
+
+    def __init__(self, title):
+        self.set_title(title)
+
+    def set_title(self, newtitle):
+        self.contents['title'] = newtitle
+
+    def get_title(self):
+        return self.contents.get('title')
+
+    def get_doctype(self):
+        return self.contents.get('doctype')
+
+    def get_body(self):
+        return self.contents.get('body')
+
+    def _get_htag(self, size):
+        '''Returns a tuple of opening/closing header tags'''
+        return '<h' + str(size) + '>', '</h' + str(size) + '>'
+
+    def _get_ptag(self):
+        '''Returns a tuple of opening/closing paragraph tags'''
+        return '<p>', '</p>'
+
+    def add_heading(self, heading, size):
+        tags = self._get_htag(size)
+        self.contents['body'] += tags[0] + str(heading) + tags[1] + '\n'
+
+    def add_paragraph(self, text):
+        tags = self._get_ptag()
+        self.contents['body'] += tags[0] + str(text) + tags[1] + '\n'
+
+    def get_page(self):
+        page = self.get_doctype() + '\n'
+        page += '<html>\n'
+        page += '<head><title>' + self.get_title() + '</title></head>\n'
+        page += '<body>\n'
+        page += self.get_body()
+        page += '</body>\n'
+        page += '</html>'
+        return page
+
+    def __str__(self):
+        return self.get_page()
+
+class HTMLErrorPage(HTMLPage):
+    '''
+    Creates an error page
+
+    Error codes taken from http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
+
+    Any errors in generation will automatically cause a 500:Internal Server
+    Error page to be generated.
+
+    Takes as input an error code in str or int format
+    '''
+
+    # All error codes the server will support/return
+    errors = {
+        '400':'Bad Request',
+        '401':'Unauthorized',
+        '402':'Forbidden',
+        '404':'Not Found',
+        '500':'Internal Server Error',
+        '505':'HTTP Version Not Supported'}
+
+    code = '500'
+
+    def __init__(self, code):
+        if not (self.is_error(str(code))):
+            self.code = '500'
+        else:
+            self.code = code
+
+        HTMLPage.__init__(self, self.get_error(str(code)))
+        self.add_heading()
+        self.add_paragraph()
+
+    def add_heading(self, size=4):
+        HTMLPage.add_heading(self, self.code, size)
+
+    def add_paragraph(self, text=None):
+        if(text is None):
+            text = self.get_error(self.code)
+        HTMLPage.add_paragraph(self, text)
+
+    def is_error(self, code):
+        return code in self.errors
+
+    def get_error(self, code):
+        return self.errors.get(str(code), self.errors.get('500'))
+
+    def get_page(self):
+        return HTMLPage.get_page(self)
+
+    def __str__(self):
+        return HTMLPage.__str__(self)

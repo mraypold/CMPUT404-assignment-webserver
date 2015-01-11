@@ -33,7 +33,7 @@ import time
 # http://stackoverflow.com/questions/3911009/python-socketserver-baserequesthandler-knowing-the-port-and-use-the-port-already
 # http://stackoverflow.com/questions/15889241/send-a-variable-to-a-tcphandler-in-python
 #
-# For searching subdirectories in ServerDirectory() _get_files()
+# For searching subdirectories in ServerDirectory() _get_fileset()
 # http://stackoverflow.com/questions/1192978/python-get-relative-path-of-all-files-and-subfolders-in-a-directory
 #
 # run: python freetests.py
@@ -165,7 +165,8 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         # If can't split into three, the request was malformed. Not 'GET / HTTP/1.1'
         rtype, path, protocol = self._split_request(self.head)
 
-        self.request.sendall(self._build_path(path))
+        # self.request.sendall(self._build_path(path))
+        # self.request.sendall("hello world".encode('utf-8'))
 
         # print ("Got a request of: %s\n" % self.data)
         # self.request.sendall(self.data)
