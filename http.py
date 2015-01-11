@@ -59,6 +59,12 @@ class HTTPHeader():
     def get_string(self):
         return ''.join(self._get_values())
 
+    def get_protocol(self):
+        return self.get_rstatus().split()[0]
+
+    def get_rstatus(self):
+        return self.header.get('request_status')
+
     def _get_keys(self):
         return self.header.keys()
 
@@ -83,29 +89,31 @@ class HTTPMessage():
     mbody = ''
 
     def __init__(self, fp, protocol, status, ctype):
-        self.fp = fp
         self.header = HTTPHeader(protocol, status, ctype)
+        self._extract_mbody(fp)
 
     def _extract_mbody(self, fp):
         '''Extract file contents into the HTTPMessage'''
         try:
             with open(fp, 'r') as fbody:
                 self.mbody = fbody.read()
-        except IOError: # File not accessile. 4xx Error
-            self.mdbody = '400'
+        except IOError: # File not accessile.
+            self.mbody = HTMLErrorPage('404').get_page()
+            self.header.set_status(self.header.get_protocol(), '404 Not Found')
 
     def get_header(self):
         return self.header
 
     def get_message_body(self):
-        return self.message
+        return self.mbody
 
-    def build_message(self):
-        return
-
-    def build_package(self):
+    def get_package(self):
         '''Combines the header and message for an outgoing HTTP response'''
-        return
+        result = self.header.get_string() + self.mbody
+        return result.encode('utf-8')
+
+    def __str__(self):
+        return self.get_package()
 
 class HTMLPage():
     '''Extremely simple HTML page builder'''
