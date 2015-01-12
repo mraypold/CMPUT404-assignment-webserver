@@ -88,9 +88,17 @@ class HTTPMessage():
 
     mbody = ''
 
-    def __init__(self, fp, protocol, status, ctype):
-        self.header = HTTPHeader(protocol, status, ctype)
+    def __init__(self, fp, protocol, status):
+        self.header = HTTPHeader(protocol, status, self.get_ctype(fp))
         self._extract_mbody(fp)
+
+    def get_ctype(self, fp):
+        if(fp.endswith('.html')):
+            return 'text/html'
+        elif(fp.endswith('.css')):
+            return 'text/css'
+        else:
+            return 'text/plain'
 
     def _extract_mbody(self, fp):
         '''Extract file contents into the HTTPMessage'''

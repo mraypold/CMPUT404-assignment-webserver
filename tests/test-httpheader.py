@@ -35,13 +35,11 @@ class TestHTTP(unittest.TestCase):
     def setUp(self):
         self.protocol = 'HTTP/1.1'
         self.status = '200 OK'
-        self.ctype = 'text/html'
 
         self.m = http.HTTPMessage(
             self.truefp,
             self.protocol,
-            self.status,
-            self.ctype)
+            self.status)
 
     def test_file_not_exist(self):
         '''Ensure the mock filepath does not actually exist for future tests'''

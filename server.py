@@ -162,11 +162,22 @@ class RequestHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         self.head = self._extract_head(self.request.recv(1024).strip())
 
-        # If can't split into three, the request was malformed. Not 'GET / HTTP/1.1'
+        # If can't split into three, the request was malformed. Not 'GET / HTTP/1.1' - TODO Handle this error
         rtype, path, protocol = self._split_request(self.head)
 
-        # self.request.sendall(self._build_path(path))
-        # self.request.sendall("hello world".encode('utf-8'))
+        path = self._build_path(path)
+        servable = self.server.directory.exists(path)
+        get = self._is_get(rtype)
+
+        if(get and servable):
+            m = http.HTTPMessage(path, protocol, '200 OK')
+            self.request.sendall(m.get_package())
+        elif(get and not servable):
+            m = http.HTTPMessage(path, protocol, '200 OK') # TEMP TODO
+            self.request.sendall(m.get_package())
+        else:
+            m = http.HTTPMessage(path, protocol, '200 OK') # TEMP TODO
+            self.request.sendall(m.get_package())
 
         # print ("Got a request of: %s\n" % self.data)
         # self.request.sendall(self.data)
@@ -175,7 +186,6 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         '''Extract first line from received request'''
         return request.splitlines()[0]
 
-    # Potential problem if this is longer than 3 variables....investigate
     def _split_request(self, request):
         '''Returns the type (eg GET), file requested and http protocol'''
         return request.split()
