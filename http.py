@@ -78,9 +78,9 @@ class HTTPMessage():
     '''
     Packages an HTTP header and the optional HTTP message body data.
 
-    fp: The filepath of the file to be included in the HTTP response.
     Protocol: The HTTP protocol (eg: HTTP/1.1).
     Status: A valid HTTP status code (No checking is performed. eg: 200 OK).
+    fp: The filepath of the file to be included in the HTTP response.
 
     The given filepath is assumed to be valid and should be checked prior to
     calling HTTPMessage().
@@ -88,9 +88,13 @@ class HTTPMessage():
 
     mbody = ''
 
-    def __init__(self, fp, protocol, status):
-        self.header = HTTPHeader(protocol, status, self.get_ctype(fp))
-        self._extract_mbody(fp)
+    def __init__(self, protocol, status, fp=None):
+        if(fp is None):
+            self.header = HTTPHeader(protocol, status, 'text/html')
+            self._create_404()
+        else:
+            self.header = HTTPHeader(protocol, status, self.get_ctype(fp))
+            self._extract_mbody(fp)
 
     def get_ctype(self, fp):
         if(fp.endswith('.html')):
@@ -106,8 +110,11 @@ class HTTPMessage():
             with open(fp, 'r') as fbody:
                 self.mbody = fbody.read()
         except IOError: # File not accessile.
-            self.mbody = HTMLErrorPage('404').get_page()
-            self.header.set_status(self.header.get_protocol(), '404 Not Found')
+            self._create_404()
+
+    def _create_404(self):
+        self.mbody = HTMLErrorPage('404').get_page()
+        self.header.set_status(self.header.get_protocol(), '404 Not Found')
 
     def get_header(self):
         return self.header

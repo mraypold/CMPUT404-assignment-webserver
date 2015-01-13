@@ -47,7 +47,7 @@ import time
 # - Change serverdirectory to seperate thread so that it can be modified when files update or overwrite serverforever()
 # - If can't split into three, the request was malformed. Not 'GET / HTTP/1.1' - do error checking
 
-
+# File size not necessary anymore, as sending filesize is not a strict HTTP/1.1 requirement
 class ServerDirectory():
     '''
     An in memory key/value store of the location of files and their size
@@ -170,13 +170,13 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         get = self._is_get(rtype)
 
         if(get and servable):
-            m = http.HTTPMessage(path, protocol, '200 OK')
+            m = http.HTTPMessage(protocol, '200 OK', path)
             self.request.sendall(m.get_package())
         elif(get and not servable):
-            m = http.HTTPMessage(path, protocol, '200 OK') # TEMP TODO
+            m = http.HTTPMessage(protocol, '404 Not Found', None)
             self.request.sendall(m.get_package())
         else:
-            m = http.HTTPMessage(path, protocol, '200 OK') # TEMP TODO
+            m = http.HTTPMessage(protocol, '404 Not Found', None) # In actuality this is a 500 error. Not implemented yet. TODO
             self.request.sendall(m.get_package())
 
         # print ("Got a request of: %s\n" % self.data)
