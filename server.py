@@ -169,7 +169,7 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         servable = self.server.directory.exists(path)
         get = self._is_get(rtype)
 
-        print("Got a %(r)s request for %(p)s" %{'r':rtype, 'p':path})
+        # print("Got a %(r)s request for %(p)s" %{'r':rtype, 'p':path})
 
         clength = self.server.directory.get_fsize(path)
 
