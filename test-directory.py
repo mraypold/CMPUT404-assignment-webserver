@@ -75,6 +75,5 @@ class TestDirectory(unittest.TestCase):
         os.rmdir(self.testsubdir)
         os.rmdir(self.testroot)
 
-
 if __name__ == '__main__':
     unittest.main()

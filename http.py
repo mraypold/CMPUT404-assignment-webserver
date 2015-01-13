@@ -35,15 +35,15 @@ class HTTPHeader():
     See http://en.wikipedia.org/wiki/HTTP_message_body
     '''
 
-    header = OrderedDict((
-        ('request_status',''),
-        ('date','Date: '),
-        ('server','Server: CMPUT 404 Webserver\r\n'),
-        ('content_type','Content-Type: '),
-        ('content_length','Content-Length: '),
-        ('blank','\r\n')))
-
     def __init__(self, protocol, status, ctype, length):
+        self.header = OrderedDict((
+            ('request_status',''),
+            ('date','Date: '),
+            ('server','Server: CMPUT 404 Webserver\r\n'),
+            ('content_type','Content-Type: '),
+            ('content_length','Content-Length: '),
+            ('blank','\r\n')))
+
         self.set_status(protocol, status)
         self.set_content_type(ctype)
         self.set_date()
@@ -53,16 +53,16 @@ class HTTPHeader():
         self.header['request_status'] = protocol + ' ' + status + '\r\n'
 
     def set_content_type(self, ctype):
-        self.header['content_type'] = 'Content-Type: ' + ctype + '\r\n'
+        self.header['content_type'] = 'Content-Type: %s\r\n' %ctype
 
     def set_date(self):
-        self.header['date'] += time.strftime('%a, %d %b %Y %H:%M:%S %z') + '\r\n'
+        self.header['date'] = 'Date: %s\r\n' %time.strftime('%a, %d %b %Y %H:%M:%S %z')
 
     def set_length(self, length):
-        self.header['content_length'] += str(length) + '\r\n'
+        self.header['content_length'] = 'Content-Length: %s\r\n' %str(length)
 
-    def get_string(self):
-        return ''.join(self._get_values())
+    def get_length(self):
+        return int(self.header.get('content_length').split()[1])
 
     def get_protocol(self):
         return self.get_rstatus().split()[0]
@@ -71,13 +71,16 @@ class HTTPHeader():
         return self.header.get('request_status')
 
     def get_ctype(self):
-        return self.header.get('content_type')
+        return self.header.get('content_type').split()[1]
 
     def _get_keys(self):
         return self.header.keys()
 
     def _get_values(self):
         return self.header.values()
+
+    def get_string(self):
+        return ''.join(self._get_values())
 
     def __str__(self):
         return self.get_string()
@@ -94,9 +97,9 @@ class HTTPMessage():
     calling HTTPMessage().
     '''
 
-    mbody = ''
-
     def __init__(self, protocol, status, length, fp=None):
+        self.mbody = ''
+
         if(fp is None):
             self.header = HTTPHeader(protocol, status, 'text/html', length)
             self._create_404()
@@ -130,7 +133,7 @@ class HTTPMessage():
         return self.header
 
     def get_message_body(self):
-        return self.mbody
+        return self.mbody.encode('utf-8')
 
     def get_package(self):
         '''Combines the header and message for an outgoing HTTP response'''
@@ -143,12 +146,11 @@ class HTTPMessage():
 class HTMLPage():
     '''Extremely simple HTML page builder'''
 
-    contents = {
-        'doctype':'<!DOCTYPE html>',
-        'title':'',
-        'body':''}
-
     def __init__(self, title):
+        self.contents = {
+            'doctype':'<!DOCTYPE html>',
+            'title':'',
+            'body':''}
         self.set_title(title)
 
     def set_title(self, newtitle):
@@ -173,7 +175,9 @@ class HTMLPage():
 
     def add_heading(self, heading, size):
         tags = self._get_htag(size)
-        self.contents['body'] += tags[0] + str(heading) + tags[1] + '\n'
+        self.contents['body'] = self.contents.get('body') + tags[0] + str(heading) + tags[1] + '\n'
+
+        # self.contents['body'] += tags[0] + str(heading) + tags[1] + '\n'
 
     def add_paragraph(self, text):
         tags = self._get_ptag()
@@ -243,7 +247,7 @@ class HTMLErrorPage(HTMLPage):
         return len(self.get_page().encode('utf-8'))
 
     def get_page(self):
-        return HTMLPage.get_page(self)
+        return HTMLPage.get_page(self).encode('utf-8')
 
     def __str__(self):
         return HTMLPage.__str__(self)
