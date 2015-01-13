@@ -169,18 +169,19 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         servable = self.server.directory.exists(path)
         get = self._is_get(rtype)
 
+        print("Got a %(r)s request for %(p)s" %{'r':rtype, 'p':path})
+
+        clength = self.server.directory.get_fsize(path)
+
         if(get and servable):
-            m = http.HTTPMessage(protocol, '200 OK', path)
+            m = http.HTTPMessage(protocol, '200 OK', clength, path)
             self.request.sendall(m.get_package())
         elif(get and not servable):
-            m = http.HTTPMessage(protocol, '404 Not Found', None)
+            m = http.HTTPMessage(protocol, '404 Not Found', clength, None)
             self.request.sendall(m.get_package())
         else:
-            m = http.HTTPMessage(protocol, '404 Not Found', None) # In actuality this is a 500 error. Not implemented yet. TODO
+            m = http.HTTPMessage(protocol, '404 Not Found', clength, None) # In actuality this is not a 404 error. Server only supports GET TODO
             self.request.sendall(m.get_package())
-
-        # print ("Got a request of: %s\n" % self.data)
-        # self.request.sendall(self.data)
 
     def _extract_head(self, request):
         '''Extract first line from received request'''

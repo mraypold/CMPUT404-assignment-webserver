@@ -40,21 +40,26 @@ class HTTPHeader():
         ('date','Date: '),
         ('server','Server: CMPUT 404 Webserver\r\n'),
         ('content_type','Content-Type: '),
+        ('content_length','Content-Length: '),
         ('blank','\r\n')))
 
-    def __init__(self, protocol, status, ctype):
+    def __init__(self, protocol, status, ctype, length):
         self.set_status(protocol, status)
         self.set_content_type(ctype)
         self.set_date()
+        self.set_length(length)
 
     def set_status(self, protocol, status):
         self.header['request_status'] = protocol + ' ' + status + '\r\n'
 
     def set_content_type(self, ctype):
-        self.header['content_type'] += ctype + '\r\n'
+        self.header['content_type'] = 'Content-Type: ' + ctype + '\r\n'
 
     def set_date(self):
         self.header['date'] += time.strftime('%a, %d %b %Y %H:%M:%S %z') + '\r\n'
+
+    def set_length(self, length):
+        self.header['content_length'] += str(length) + '\r\n'
 
     def get_string(self):
         return ''.join(self._get_values())
@@ -64,6 +69,9 @@ class HTTPHeader():
 
     def get_rstatus(self):
         return self.header.get('request_status')
+
+    def get_ctype(self):
+        return self.header.get('content_type')
 
     def _get_keys(self):
         return self.header.keys()
@@ -88,12 +96,12 @@ class HTTPMessage():
 
     mbody = ''
 
-    def __init__(self, protocol, status, fp=None):
+    def __init__(self, protocol, status, length, fp=None):
         if(fp is None):
-            self.header = HTTPHeader(protocol, status, 'text/html')
+            self.header = HTTPHeader(protocol, status, 'text/html', length)
             self._create_404()
         else:
-            self.header = HTTPHeader(protocol, status, self.get_ctype(fp))
+            self.header = HTTPHeader(protocol, status, self.get_ctype(fp), length)
             self._extract_mbody(fp)
 
     def get_ctype(self, fp):
@@ -113,8 +121,10 @@ class HTTPMessage():
             self._create_404()
 
     def _create_404(self):
-        self.mbody = HTMLErrorPage('404').get_page()
+        page = HTMLErrorPage('404')
+        self.mbody = page.get_page()
         self.header.set_status(self.header.get_protocol(), '404 Not Found')
+        self.header.set_length(str(page.get_byte_size()))
 
     def get_header(self):
         return self.header
@@ -228,6 +238,9 @@ class HTMLErrorPage(HTMLPage):
 
     def get_error(self, code):
         return self.errors.get(str(code), self.errors.get('500'))
+
+    def get_byte_size(self):
+        return len(self.get_page().encode('utf-8'))
 
     def get_page(self):
         return HTMLPage.get_page(self)
