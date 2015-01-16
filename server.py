@@ -40,13 +40,6 @@ import time
 
 # try: curl -v -X GET http://127.0.0.1:8080/
 
-# To implement still
-# - check for file permissions before attempting to access...
-# - should SocketServer.TCPServer.allow_reuse_address = True be self.TCPServer.allow_reuse_address = True ?
-# - update ServerDirectory whenever files are added. Or through infinite loop.
-# - Change serverdirectory to seperate thread so that it can be modified when files update or overwrite serverforever()
-# - If can't split into three, the request was malformed. Not 'GET / HTTP/1.1' - do error checking
-
 class ServerDirectory():
     '''
     A directory abstraction to hide operating system calls for the server.
@@ -54,7 +47,10 @@ class ServerDirectory():
     '''
 
     def __init__(self, root=os.getcwd()):
-        self.root = root
+        self.root = os.path.abspath(root)
+
+    def get_root(self):
+        return self.root
 
     def get_fsize(self, fp):
         return os.path.getsize(fp)
@@ -66,6 +62,7 @@ class ServerDirectory():
         return efile
 
     def get_encoded_file(self, fp):
+        '''Returns the specified file as an encoded string'''
         return self.get_file(fp).encode('utf-8')
 
     def exists(self, fp):
@@ -75,9 +72,9 @@ class ServerDirectory():
         return os.path.isdir(fp)
 
     def get_ctype(self, fp):
-        if(fp.endswith('.html')):
+        if fp.endswith('.html'):
             return 'text/html'
-        elif(fp.endswith('.css')):
+        elif fp.endswith('.css'):
             return 'text/css'
         else:
             return 'text/plain'
@@ -87,11 +84,19 @@ class ServerDirectory():
 
     def has_index(self, fp):
         '''Returns true if a directory has an index.html that can be served'''
-        nfp = self.append_index(self, fp)
-        return self.exists(nfp)
+        return self.exists(self.append_index(self, fp))
 
-    def get_abspath(self, path):
+    def build_abspath(self, path):
         return os.path.join(self.root, path)
+
+    def remove_root(self, path):
+        '''
+        Delete the directory root from the specified path.
+
+        Intended to be used before sending out a path in an HTTP 301 redirect
+        '''
+        l = len(self.root)
+        return path[l:]
 
     def trim_relative_root(self, path):
         try:
@@ -126,6 +131,7 @@ class PyServer(SocketServer.TCPServer):
         print("Current time: %s" % time.strftime('%a, %d %b %Y %H:%M:%S'))
         print("Root directory: %s" % self.root)
         print("-------------------------------------")
+        print('\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
 
 class RequestHandler(SocketServer.BaseRequestHandler):
     '''
@@ -143,33 +149,49 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         # If can't split into three, the request was malformed. Not 'GET / HTTP/1.1' - TODO Handle this error
         rtype, path, protocol = self._split_request(self.head)
 
-        # path = self._build_path(path)
-        print("Given: " + path)
+        # Remove the relative root if it exists and set the absolute path
+        # to prevent malicous directory traversal
+        print('path0: ' + path)
         path = directory.trim_relative_root(path)
-        print("Trim: " + path)
-        path = directory.get_abspath(path)
-        print("Final: " + path)
+        print('Path1: ' + path)
+        path = directory.build_abspath(path)
+        print('Path2: ' + path)
 
-        if(directory.is_directory(path)):
-            path = directory.append_index(path)
-            print("Append: " + path)
+        print("Path: " + path)
+        print("Got a %(r)s request for %(p)s" %{'r':rtype, 'p':directory.remove_root(path)})
 
-        servable = directory.exists(path)
         get = self._is_get(rtype)
 
-        print("Got a %(r)s request for %(p)s" %{'r':rtype, 'p':path})
+        # Serve a redirect
+        # Want to remove the root for security reasons.....
+        if directory.is_directory(path) and get:
+            print('serving a redirect')
+            path = directory.remove_root(path)
+            rsp = "HTTP/1.1 301 Moved Permanently\r\nLocation: " + path
+            # rsp += directory.append_index(path)
+            print(path)
+            print(rsp)
+            self.request.sendall(rsp)
 
+        servable = directory.exists(path)
+        print("is servable")
         clength = self.server.directory.get_fsize(path)
 
-        if(get and servable):
+        if get and servable:
+            print("1")
             m = http.HTTPMessage(protocol, '200 OK', clength, path)
             self.request.sendall(m.get_package())
-        elif(get and not servable):
+        elif get and not servable:
+            print("2")
             m = http.HTTPMessage(protocol, '404 Not Found', clength, None)
             self.request.sendall(m.get_package())
         else:
+            print("3")
             m = http.HTTPMessage(protocol, '404 Not Found', clength, None) # In actuality this is not a 404 error. Server only supports GET TODO
             self.request.sendall(m.get_package())
+
+    def _send_redirect(self):
+        return True
 
     def _extract_head(self, request):
         '''Extract first line from received request'''
