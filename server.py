@@ -47,62 +47,32 @@ import time
 # - Change serverdirectory to seperate thread so that it can be modified when files update or overwrite serverforever()
 # - If can't split into three, the request was malformed. Not 'GET / HTTP/1.1' - do error checking
 
-# File size not necessary anymore, as sending filesize is not a strict HTTP/1.1 requirement
 class ServerDirectory():
     '''
-    An in memory key/value store of the location of files and their size
-    in bytes to prevent unnecessary disk IO when looking for files.
-
+    A directory abstraction to hide operating system calls for the server.
     root: The base directory of the web server
     '''
-    directory = {}
-    dfsize = -1 # Default file size -1 bytes
 
     def __init__(self, root=os.getcwd()):
         self.root = root
-        self._build_directory()
-
-    def _build_directory(self):
-        '''
-        Seeks all filepaths (keys) in root and determines their size (values)
-        in bytes for entry in the self.directory dictionary.
-        '''
-        self.directory = dict.fromkeys(self._get_fileset(), self.dfsize)
-        self._set_all_fsize()
-
-    def rebuild_directory(self):
-        self._build_directory()
-
-    def _get_fileset(self):
-        '''Returns a set of all filepaths in subdirectories'''
-        fileset = set()
-
-        for directory, folder, files in os.walk(self.root):
-            for filename in files:
-                rd = os.path.relpath(directory, os.getcwd())
-                rf = os.path.join(rd, filename)
-                fileset.add(rf)
-
-        return fileset
-
-    def _set_all_fsize(self):
-        for key in self.directory:
-            self._set_fsize(key)
-
-    def _set_fsize(self, fp):
-        self.directory[fp] = os.path.getsize(fp)
 
     def get_fsize(self, fp):
-        return self.directory.get(fp, self.dfsize)
+        return os.path.getsize(fp)
 
-    def get_filepaths(self):
-        return self.directory.keys()
+    def get_file(self, fp):
+        '''Returns a string of the specified file'''
+        with open(fp, 'r') as fbody:
+            efile = fbody.read()
+        return efile
 
-    def get_num_files(self):
-        return len(self.directory)
+    def get_encoded_file(self, fp):
+        return self.get_file(fp).encode('utf-8')
 
     def exists(self, fp):
-        return fp in self.directory
+        return os.path.isfile(fp)
+
+    def is_directory(self, fp):
+        return os.path.isdir(fp)
 
     def get_ctype(self, fp):
         if(fp.endswith('.html')):
@@ -112,15 +82,25 @@ class ServerDirectory():
         else:
             return 'text/plain'
 
-    def _create_table(self):
-        '''Create a table for printing'''
-        result = 'Location - (Filesize)\n'
-        for k,v in self.directory.items():
-            result += str(k) + ' - (' + str(v) + ')\n'
-        return result.rstrip()
+    def append_index(self, fp):
+        return os.path.join(fp, 'index.html')
 
-    def __str__(self):
-        return self._create_table()
+    def has_index(self, fp):
+        '''Returns true if a directory has an index.html that can be served'''
+        nfp = self.append_index(self, fp)
+        return self.exists(nfp)
+
+    def get_abspath(self, path):
+        return os.path.join(self.root, path)
+
+    def trim_relative_root(self, path):
+        try:
+            return path[1:] if path[0] == '/' else path
+        except IndexError:
+            return ''
+
+    def __str__(self, fp):
+        return self.root
 
 class PyServer(SocketServer.TCPServer):
     '''
@@ -146,10 +126,6 @@ class PyServer(SocketServer.TCPServer):
         print("Current time: %s" % time.strftime('%a, %d %b %Y %H:%M:%S'))
         print("Root directory: %s" % self.root)
         print("-------------------------------------")
-        print("Hosting %d file(s)" % self.directory.get_num_files())
-        print(self.directory)
-        print("-------------------------------------")
-
 
 class RequestHandler(SocketServer.BaseRequestHandler):
     '''
@@ -162,14 +138,26 @@ class RequestHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         self.head = self._extract_head(self.request.recv(1024).strip())
 
+        directory = self.server.directory
+
         # If can't split into three, the request was malformed. Not 'GET / HTTP/1.1' - TODO Handle this error
         rtype, path, protocol = self._split_request(self.head)
 
-        path = self._build_path(path)
-        servable = self.server.directory.exists(path)
+        # path = self._build_path(path)
+        print("Given: " + path)
+        path = directory.trim_relative_root(path)
+        print("Trim: " + path)
+        path = directory.get_abspath(path)
+        print("Final: " + path)
+
+        if(directory.is_directory(path)):
+            path = directory.append_index(path)
+            print("Append: " + path)
+
+        servable = directory.exists(path)
         get = self._is_get(rtype)
 
-        # print("Got a %(r)s request for %(p)s" %{'r':rtype, 'p':path})
+        print("Got a %(r)s request for %(p)s" %{'r':rtype, 'p':path})
 
         clength = self.server.directory.get_fsize(path)
 
@@ -197,30 +185,18 @@ class RequestHandler(SocketServer.BaseRequestHandler):
     def _is_HTTP(self, protocol):
         return protocol.strip() == 'HTTP/1.1'
 
-    def _append_index(self, path):
-        return os.path.join(path, 'index.html')
+    # def _append_index(self, path):
+    #     return os.path.join(path, 'index.html')
 
-    def _trim_relative_root(self, path):
-        '''Trim relative root to allow os.join() and directory lookup'''
-        try:
-            return path[1:] if path[0] == '/' else path
-        except IndexError:
-            return ''
+    # def _has_extension(self, path):
+    #     return path.endswith('.html') or path.endswith('.css')
 
-    def _has_extension(self, path):
-        return path.endswith('.html') or path.endswith('.css')
-
-    def _build_path(self, path):
-        if(path.endswith('/')): # current path is directory
-            path = self._append_index(path)
-
-        path = self._trim_relative_root(path)
-        return self._set_relpath(path)
-
-    def _set_relpath(self, path):
-        rd = os.path.relpath(self.server.root, os.getcwd())
-        rf = os.path.join(rd, path)
-        return rf
+    # def _build_path(self, path):
+    #     if(path.endswith('/')): # current path is directory
+    #         path = self._append_index(path)
+    #
+    #     path = self._trim_relative_root(path)
+    #     return self._set_relpath(path)
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080

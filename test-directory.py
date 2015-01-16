@@ -53,19 +53,14 @@ class TestDirectory(unittest.TestCase):
     def test_file_not_directory(self):
         self.assertFalse(self.d.exists('testdir/notexist.html'), "Directory should return that file does not exist")
 
-    def test_number_files(self):
-        self.assertTrue(self.d.get_num_files() == 2, "ServerDirectory miscounted the number of files")
-
-    def test_get_filepaths(self):
-        paths = self.d.get_filepaths()
-        for path in paths:
-            self.assertTrue(path[0:7] == self.testroot[-7:], "The filepaths do not start with the correct root directory")
-
     def test_get_fsize(self):
         self.assertTrue(self.d.get_fsize('testdir/hello.html') == 13, "Did not get the correct file size")
 
     def test_content_type(self):
         self.assertTrue(self.d.get_ctype('testdir/hello.html') == 'text/html', "Content type does not match file extension")
+
+    def test_get_file(self):
+        self.assertTrue(self.d.get_file('testdir/hello.html') == "<HTML></HTML>", "Did not return the correct file")
 
     @classmethod
     def tearDownClass(self):
