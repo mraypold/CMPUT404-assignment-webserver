@@ -36,14 +36,18 @@ import time
 # For searching subdirectories in ServerDirectory() _get_fileset()
 # http://stackoverflow.com/questions/1192978/python-get-relative-path-of-all-files-and-subfolders-in-a-directory
 #
+# For preventing malicous directory traversal
+# http://www.guyrutenberg.com/2013/12/06/preventing-directory-traversal-in-python/
+#
 # run: python freetests.py
 
 # try: curl -v -X GET http://127.0.0.1:8080/
 
 class ServerDirectory():
-    '''
-    A directory abstraction to hide operating system calls for the server.
-    root: The base directory of the web server
+    '''A directory abstraction to hide operating system calls for the server.
+
+    Arguments:
+        root (str): The base directory of the web server
     '''
 
     def __init__(self, root=os.getcwd()):
@@ -53,7 +57,8 @@ class ServerDirectory():
         return self.root
 
     def get_fsize(self, fp):
-        return os.path.getsize(fp)
+        '''Return the filesize in bytes, or -1 if the file doesn't exist'''
+        return os.path.getsize(fp) if self.exists(fp) else -1
 
     def get_file(self, fp):
         '''Returns a string of the specified file'''
@@ -87,16 +92,19 @@ class ServerDirectory():
         return self.exists(self.append_index(self, fp))
 
     def build_abspath(self, path):
+        path = os.path.normpath('/' + path).lstrip('/')
         return os.path.join(self.root, path)
 
     def remove_root(self, path):
-        '''
-        Delete the directory root from the specified path.
+        '''Delete the directory root from the specified path.
 
         Intended to be used before sending out a path in an HTTP 301 redirect
         '''
-        l = len(self.root)
-        return path[l:]
+        length = len(self.root)
+        if path[:length] == self.root:
+            return path[length:]
+        else:
+            return path
 
     def trim_relative_root(self, path):
         try:
@@ -108,8 +116,12 @@ class ServerDirectory():
         return self.root
 
 class PyServer(SocketServer.TCPServer):
-    '''
-    Implements a simple server for HTTP/1.1 GET requests.
+    '''Implements a simple server for HTTP/1.1 GET requests.
+
+    Arguments:
+        Host (str): IP to server from.
+        Port (int): endpoint connection for destination address
+
     '''
 
     def __init__(self, Host, Port):
@@ -131,7 +143,6 @@ class PyServer(SocketServer.TCPServer):
         print("Current time: %s" % time.strftime('%a, %d %b %Y %H:%M:%S'))
         print("Root directory: %s" % self.root)
         print("-------------------------------------")
-        print('\n\n\n\n\n\n\n\n\n\n\n\n\n\n')
 
 class RequestHandler(SocketServer.BaseRequestHandler):
     '''
@@ -146,52 +157,35 @@ class RequestHandler(SocketServer.BaseRequestHandler):
 
         directory = self.server.directory
 
-        # If can't split into three, the request was malformed. Not 'GET / HTTP/1.1' - TODO Handle this error
         rtype, path, protocol = self._split_request(self.head)
 
-        # Remove the relative root if it exists and set the absolute path
-        # to prevent malicous directory traversal
-        print('path0: ' + path)
+        # Prevent malicous directory traversal
         path = directory.trim_relative_root(path)
-        print('Path1: ' + path)
         path = directory.build_abspath(path)
-        print('Path2: ' + path)
 
-        print("Path: " + path)
-        print("Got a %(r)s request for %(p)s" %{'r':rtype, 'p':directory.remove_root(path)})
+        # print("Got a %(r)s request for %(p)s" %{'r':rtype, 'p':directory.remove_root(path)})
 
         get = self._is_get(rtype)
-
-        # Serve a redirect
-        # Want to remove the root for security reasons.....
-        if directory.is_directory(path) and get:
-            print('serving a redirect')
-            path = directory.remove_root(path)
-            rsp = "HTTP/1.1 301 Moved Permanently\r\nLocation: " + path
-            # rsp += directory.append_index(path)
-            print(path)
-            print(rsp)
-            self.request.sendall(rsp)
-
         servable = directory.exists(path)
-        print("is servable")
+
+        # Serve a redirect after removing root path for security
+        if directory.is_directory(path) and get:
+            path = directory.remove_root(path)
+            path = directory.append_index(path)
+            rsp = "HTTP/1.1 301 Moved Permanently\r\nLocation: " + path + '\r\n'
+            self.request.sendall(rsp)
+            return
+
         clength = self.server.directory.get_fsize(path)
 
         if get and servable:
-            print("1")
             m = http.HTTPMessage(protocol, '200 OK', clength, path)
             self.request.sendall(m.get_package())
         elif get and not servable:
-            print("2")
             m = http.HTTPMessage(protocol, '404 Not Found', clength, None)
             self.request.sendall(m.get_package())
         else:
-            print("3")
-            m = http.HTTPMessage(protocol, '404 Not Found', clength, None) # In actuality this is not a 404 error. Server only supports GET TODO
-            self.request.sendall(m.get_package())
-
-    def _send_redirect(self):
-        return True
+            self.request.sendall('HTTP/1.1 501 Not Implemented\r\n')
 
     def _extract_head(self, request):
         '''Extract first line from received request'''
@@ -206,19 +200,6 @@ class RequestHandler(SocketServer.BaseRequestHandler):
 
     def _is_HTTP(self, protocol):
         return protocol.strip() == 'HTTP/1.1'
-
-    # def _append_index(self, path):
-    #     return os.path.join(path, 'index.html')
-
-    # def _has_extension(self, path):
-    #     return path.endswith('.html') or path.endswith('.css')
-
-    # def _build_path(self, path):
-    #     if(path.endswith('/')): # current path is directory
-    #         path = self._append_index(path)
-    #
-    #     path = self._trim_relative_root(path)
-    #     return self._set_relpath(path)
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
