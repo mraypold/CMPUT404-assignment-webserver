@@ -24,15 +24,62 @@ from collections import OrderedDict
 #
 # http://docs.python.org/2/library/socketserver.html
 
-class HTTPHeader():
+class HTTPStatus():
+    '''Builds the first line of an HTTP Header.
+
+    Aguments:
+        protocol (str): The HTTP protocol (eg: HTTP/1.1).
+        status (str): The status code (eg: 200).
+
+    Attributes:
+        codes: A dictionary of HTTP status codes.
     '''
-    Builds an HTTP header response.
 
-    Protocol: The HTTP protocol (eg: HTTP/1.1).
-    Status: A valid HTTP status code (No checking is performed. eg: 200 OK).
-    Type: Content type of the message (eg: text/html).
+    codes = {
+        '200':'OK',
+        '301':'Moved Permanently',
+        '400':'Bad Request',
+        '404':'Not Found',
+        '500':'Internal Server Error',}
 
-    See http://en.wikipedia.org/wiki/HTTP_message_body
+    def __init__(self, protocol, status):
+        status = self._to_str(status)
+        self.hstatus = '%s %s\r\n' %(protocol, self._get_response(status))
+
+    # Class arguments should be given as a str
+    def _to_str(self, status):
+        try:
+            return str(status)
+        except:
+            return '500'
+
+    def get_hstatus(self):
+        return self.hstatus
+
+    def _get_response(self, status):
+        if self.exists(status):
+            return '%s %s' %(status, self.codes.get(status))
+        else:
+            return '%s %s' %('500', self.codes.get('500'))
+
+    def exists(self, status):
+        return status in self.codes
+
+    def __str__(self):
+        return self.get_hstatus()
+
+class HTTPHeader():
+    '''Builds an HTTP header response.
+
+    Arguments:
+        Protocol: The HTTP protocol (eg: HTTP/1.1).
+        Status: A valid HTTP status code (No checking is performed. eg: 200 OK).
+        Type: Content type of the message (eg: text/html).
+
+    Attributes:
+        header: an ordered dictionary containing required HTTP header lines.
+
+    See http://en.wikipedia.org/wiki/HTTP_message_body .
     '''
 
     def __init__(self, protocol, status, ctype, length):
@@ -50,7 +97,7 @@ class HTTPHeader():
         self.set_length(length)
 
     def set_status(self, protocol, status):
-        self.header['request_status'] = protocol + ' ' + status + '\r\n'
+        self.header['request_status'] = HTTPStatus(protocol, status).get_hstatus()
 
     def set_content_type(self, ctype):
         self.header['content_type'] = 'Content-Type: %s\r\n' %ctype
@@ -86,12 +133,15 @@ class HTTPHeader():
         return self.get_string()
 
 class HTTPMessage():
-    '''
-    Packages an HTTP header and the optional HTTP message body data.
+    '''Packages an HTTP header and the optional HTTP message body data.
 
-    Protocol: The HTTP protocol (eg: HTTP/1.1).
-    Status: A valid HTTP status code (No checking is performed. eg: 200 OK).
-    fp: The filepath of the file to be included in the HTTP response.
+    Arguments:
+        protocol (str): The HTTP protocol (eg: HTTP/1.1).
+        status (str): A valid HTTP status code (No checking is performed. eg: 200 OK).
+        fp: The filepath of the file to be included in the HTTP response.
+
+    Attributes:
+        mbody (str): The message body of an HTTP header.
 
     The given filepath is assumed to be valid and should be checked prior to
     calling HTTPMessage().
@@ -126,7 +176,7 @@ class HTTPMessage():
     def _create_404(self):
         page = HTMLErrorPage('404')
         self.mbody = page.get_page()
-        self.header.set_status(self.header.get_protocol(), '404 Not Found')
+        self.header.set_status(self.header.get_protocol(), '404')
         self.header.set_length(str(page.get_byte_size()))
 
     def get_header(self):
@@ -144,7 +194,14 @@ class HTTPMessage():
         return self.get_package()
 
 class HTMLPage():
-    '''Extremely simple HTML page builder'''
+    '''Simple HTML page builder
+
+    Arguments:
+        title (str): The title of the requrest HTML page
+
+    Attributes:
+        contents: A dictionary containing required HTML elements.
+    '''
 
     def __init__(self, title):
         self.contents = {
@@ -197,25 +254,27 @@ class HTMLPage():
         return self.get_page()
 
 class HTMLErrorPage(HTMLPage):
-    '''
-    Creates an error page
+    '''Creates an error page
+
+    Arguments:
+        code (str): The HTTP error code to create an HTML page for.
+
+    Attributes:
+        errors: A dictionary containing all some HTTP error codes.
+        code (str): The default error code set when exceptions are caught.
 
     Error codes taken from http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
 
     Any errors in generation will automatically cause a 500:Internal Server
     Error page to be generated.
 
-    Takes as input an error code in str or int format
     '''
 
     # All error codes the server will support/return
     errors = {
         '400':'Bad Request',
-        '401':'Unauthorized',
-        '402':'Forbidden',
         '404':'Not Found',
-        '500':'Internal Server Error',
-        '505':'HTTP Version Not Supported'}
+        '500':'Internal Server Error',}
 
     code = '500'
 
