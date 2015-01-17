@@ -131,17 +131,17 @@ class PyServer(SocketServer.TCPServer):
 
         self.root = os.path.join(os.getcwd(), 'www')
         self.directory = ServerDirectory(self.root)
-        self.print_server_stats()
+        self.print_server_stats(Host, Port)
 
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
         self.serve_forever()
 
-    def print_server_stats(self):
+    def print_server_stats(self, host, port):
         print("-------------------------------------")
         print("CMPUT 410 Webserver")
+        print("Address: %s:%s" %(str(host), str(port)))
         print("Current time: %s" % time.strftime('%a, %d %b %Y %H:%M:%S'))
-        print("Root directory: %s" % self.directory)
         print("-------------------------------------")
 
 class RequestHandler(SocketServer.BaseRequestHandler):
@@ -163,7 +163,7 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         path = directory.trim_relative_root(path)
         path = directory.build_abspath(path)
 
-        # print("Got a %(r)s request for %(p)s" %{'r':rtype, 'p':directory.remove_root(path)})
+        print("Got a %(r)s request for %(p)s" %{'r':rtype, 'p':directory.remove_root(path)})
 
         get = self._is_get(rtype)
         servable = directory.exists(path)
