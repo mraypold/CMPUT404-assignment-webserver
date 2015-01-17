@@ -44,6 +44,7 @@ class TestHTTP(unittest.TestCase):
             self.length,
             self.truefp)
 
+    # Test that setUpClass executed correctly
     def test_file_not_exist(self):
         '''Ensure the mock filepath does not actually exist for future tests'''
         self.assertFalse(os.path.isfile(self.falsefp), "File actually exists, tests cannot be run")
@@ -51,6 +52,7 @@ class TestHTTP(unittest.TestCase):
     def test_file_exists(self):
         '''Created file in setUpClass exists'''
         self.assertTrue(os.path.isfile(self.truefp), "Mock file does not exists, tests cannot be run")
+    # End test that setUpClass executed correctly
 
     def test_no_fp_constructor(self):
         '''A 404 page should be created for the message body when fp not defined'''
@@ -73,6 +75,17 @@ class TestHTTP(unittest.TestCase):
         # Header request_status must be updated when a IOError is raised
         status = self.m.header.get_rstatus()
         self.assertTrue(status == 'HTTP/1.1 404 Not Found\r\n', "New status not correctly set after IOError")
+
+    def test_httpstatus_exists(self):
+        s = http.HTTPStatus('HTTP/1.1', '200')
+        self.assertTrue(s.exists('200'), 'Incorrectly returns that HTTPStatus does not exist')
+        self.assertFalse(s.exists('999'), 'Incorrectly returns that HTTPStatus does exist')
+
+    def test_code_not_supported(self):
+        '''500 Server Error should be set if the given status code is not supported'''
+        s = http.HTTPStatus('HTTP/1.1', '999')
+        self.assertTrue(s.get_hstatus() == 'HTTP/1.1 500 Internal Server Error\r\n', 'New status line should have 500 status code')
+
 
     @classmethod
     def tearDownClass(self):

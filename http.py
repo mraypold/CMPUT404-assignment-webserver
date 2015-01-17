@@ -39,12 +39,8 @@ class HTTPStatus():
         '200':'OK',
         '301':'Moved Permanently',
         '400':'Bad Request',
-        '401':'Unauthorized',
-        '402':'Forbidden',
         '404':'Not Found',
-        '500':'Internal Server Error',
-        '501':'Not Implemented',
-        '505':'HTTP Version Not Supported'}
+        '500':'Internal Server Error',}
 
     def __init__(self, protocol, status):
         status = self._to_str(status)
@@ -61,7 +57,10 @@ class HTTPStatus():
         return self.hstatus
 
     def _get_response(self, status):
-        return '%s %s' %(status, self.codes.get(status))
+        if self.exists(status):
+            return '%s %s' %(status, self.codes.get(status))
+        else:
+            return '%s %s' %('500', self.codes.get('500'))
 
     def exists(self, status):
         return status in self.codes
@@ -98,7 +97,7 @@ class HTTPHeader():
         self.set_length(length)
 
     def set_status(self, protocol, status):
-        self.header['request_status'] = protocol + ' ' + status + '\r\n'
+        self.header['request_status'] = HTTPStatus(protocol, status).get_hstatus()
 
     def set_content_type(self, ctype):
         self.header['content_type'] = 'Content-Type: %s\r\n' %ctype
@@ -177,7 +176,7 @@ class HTTPMessage():
     def _create_404(self):
         page = HTMLErrorPage('404')
         self.mbody = page.get_page()
-        self.header.set_status(self.header.get_protocol(), '404 Not Found')
+        self.header.set_status(self.header.get_protocol(), '404')
         self.header.set_length(str(page.get_byte_size()))
 
     def get_header(self):
@@ -274,11 +273,8 @@ class HTMLErrorPage(HTMLPage):
     # All error codes the server will support/return
     errors = {
         '400':'Bad Request',
-        '401':'Unauthorized',
-        '402':'Forbidden',
         '404':'Not Found',
-        '500':'Internal Server Error',
-        '505':'HTTP Version Not Supported'}
+        '500':'Internal Server Error',}
 
     code = '500'
 

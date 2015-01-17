@@ -47,6 +47,10 @@ class TestDirectory(unittest.TestCase):
     def test_file_created(self):
         self.assertTrue(os.path.isfile(self.filename), "File does not exist!")
 
+    def test_directory_traversal(self):
+        traversed = os.path.join(self.root, '../../../..')
+        self.assertTrue(self.d.build_abspath(traversed) == self.testroot + '/', 'Directory traversal should not be possible')
+
     def test_file_in_directory(self):
         self.assertTrue(self.d.exists('testdir/hello.html'), "Directory should return that the file exists")
 

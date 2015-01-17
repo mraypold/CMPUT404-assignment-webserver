@@ -112,7 +112,7 @@ class ServerDirectory():
         except IndexError:
             return ''
 
-    def __str__(self, fp):
+    def __str__(self): # Not secure
         return self.root
 
 class PyServer(SocketServer.TCPServer):
@@ -141,7 +141,7 @@ class PyServer(SocketServer.TCPServer):
         print("-------------------------------------")
         print("CMPUT 410 Webserver")
         print("Current time: %s" % time.strftime('%a, %d %b %Y %H:%M:%S'))
-        print("Root directory: %s" % self.root)
+        print("Root directory: %s" % self.directory)
         print("-------------------------------------")
 
 class RequestHandler(SocketServer.BaseRequestHandler):
@@ -179,10 +179,10 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         clength = self.server.directory.get_fsize(path)
 
         if get and servable:
-            m = http.HTTPMessage(protocol, '200 OK', clength, path)
+            m = http.HTTPMessage(protocol, '200', clength, path)
             self.request.sendall(m.get_package())
         elif get and not servable:
-            m = http.HTTPMessage(protocol, '404 Not Found', clength, None)
+            m = http.HTTPMessage(protocol, '404', clength, None)
             self.request.sendall(m.get_package())
         else:
             self.request.sendall('HTTP/1.1 501 Not Implemented\r\n')
