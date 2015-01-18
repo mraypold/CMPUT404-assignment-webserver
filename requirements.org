@@ -46,7 +46,7 @@
 
 ** Restrictions
    - [x] Use Python 2.7
-   - [ ] Must run in the undergrad lab (Ubuntu 12.04)
+   - [x] Must run in the undergrad lab (Ubuntu 12.04)
    - [x] License your webserver properly (use an OSI approved license)
      - Put your name on it!
    - [x] You cannot use a Web Server library
