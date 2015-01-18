@@ -163,7 +163,7 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         path = directory.trim_relative_root(path)
         path = directory.build_abspath(path)
 
-        print("Got a %(r)s request for %(p)s" %{'r':rtype, 'p':directory.remove_root(path)})
+        # print("Got a %(r)s request for %(p)s" %{'r':rtype, 'p':directory.remove_root(path)})
 
         get = self._is_get(rtype)
         servable = directory.exists(path)
@@ -185,15 +185,21 @@ class RequestHandler(SocketServer.BaseRequestHandler):
             m = http.HTTPMessage(protocol, '404', clength, None)
             self.request.sendall(m.get_package())
         else:
-            self.request.sendall('HTTP/1.1 501 Not Implemented\r\n')
+            self.request.sendall('HTTP/1.1 501 Not Implemented\r\n\r\n')
 
     def _extract_head(self, request):
         '''Extract first line from received request'''
         return request.splitlines()[0]
 
     def _split_request(self, request):
-        '''Returns the type (eg GET), file requested and http protocol'''
-        return request.split()
+        '''Returns the type (eg GET), file requested and http protocol
+
+        If the request is malformed eg: GET /file.html other.html HTTP/1.1,
+        return best guess.
+        '''
+        # TODO see issues.md issue # 1
+        result = request.split()
+        return result if len(result) == 3 else (result[0], result[1], result[-1])
 
     def _is_get(self, request_type):
         return request_type.strip() == 'GET'
