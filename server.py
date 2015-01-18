@@ -160,6 +160,7 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         rtype, path, protocol = self._split_request(self.head)
 
         # Prevent malicous directory traversal
+        path = directory.append_index(path) if self._serve_index(path) else path
         path = directory.trim_relative_root(path)
         path = directory.build_abspath(path)
 
@@ -168,12 +169,9 @@ class RequestHandler(SocketServer.BaseRequestHandler):
         get = self._is_get(rtype)
         servable = directory.exists(path)
 
-        # Serve a redirect after removing root path for security
+        # Serve a redirect for directory not ending with /
         if directory.is_directory(path) and get:
-            path = directory.remove_root(path)
-            path = directory.append_index(path)
-            rsp = "HTTP/1.1 301 Moved Permanently\r\nLocation: " + path + '\r\n'
-            self.request.sendall(rsp)
+            self.request.sendall(self._build_redirect(path, directory))
             return
 
         clength = self.server.directory.get_fsize(path)
@@ -186,6 +184,15 @@ class RequestHandler(SocketServer.BaseRequestHandler):
             self.request.sendall(m.get_package())
         else:
             self.request.sendall('HTTP/1.1 501 Not Implemented\r\n\r\n')
+
+    def _build_redirect(self, fp, directory):
+        fp = directory.remove_root(fp)
+        fp = directory.append_index(fp)
+        return "HTTP/1.1 301 Moved Permanently\r\nLocation: " + fp + '\r\n'
+
+    def _serve_index(self, fp):
+        '''Returns True if directory ends with / and an index must be served'''
+        return True if fp.strip().endswith('/') else False
 
     def _extract_head(self, request):
         '''Extract first line from received request'''
